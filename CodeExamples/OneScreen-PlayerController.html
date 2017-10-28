@@ -1,0 +1,296 @@
+<!-- HTML generated using hilite.me --><div style="background: #ffffff; overflow:auto;width:auto;border:solid gray;border-width:.1em .1em .1em .8em;padding:.2em .6em;"><pre style="margin: 0; line-height: 125%"><span style="color: #008800; font-weight: bold">using</span> <span style="color: #0e84b5; font-weight: bold">System.Collections</span>;
+<span style="color: #008800; font-weight: bold">using</span> <span style="color: #0e84b5; font-weight: bold">UnityEngine</span>;
+
+<span style="color: #0000CC">[RequireComponent(typeof(Rigidbody2D))]</span>
+
+<span style="color: #888888">//Script on player for everything that isnt visual</span>
+<span style="color: #008800; font-weight: bold">public</span> <span style="color: #008800; font-weight: bold">class</span> <span style="color: #BB0066; font-weight: bold">PlayerController</span> : MonoBehaviour {
+
+    RoomManager rm;                         <span style="color: #888888">//refrence to roomlist, set at start</span>
+
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #333399; font-weight: bold">float</span> jumpAmount = <span style="color: #6600EE; font-weight: bold">5f</span>;           <span style="color: #888888">//variables for player speed</span>
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #333399; font-weight: bold">float</span> moveSpeed = <span style="color: #6600EE; font-weight: bold">10f</span>;           <span style="color: #888888">//</span>
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #333399; font-weight: bold">bool</span> isLargeMode = <span style="color: #008800; font-weight: bold">true</span>;         
+
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #333399; font-weight: bold">bool</span> isChangeEnabled = <span style="color: #008800; font-weight: bold">false</span>;    <span style="color: #888888">//set to true when new abilities unlocked</span>
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #333399; font-weight: bold">bool</span> isGunEnabled = <span style="color: #008800; font-weight: bold">false</span>;       <span style="color: #888888">//</span>
+
+    <span style="color: #008800; font-weight: bold">public</span> Interactable grabbedObject;
+    <span style="color: #008800; font-weight: bold">public</span> Vector2 handGrabPos;
+
+    Vector3 headStartPos;                               <span style="color: #888888">//positions for changing between large and small mode</span>
+    Vector3 headPos1 = <span style="color: #008800; font-weight: bold">new</span> Vector3(<span style="color: #6600EE; font-weight: bold">0</span>,<span style="color: #6600EE; font-weight: bold">2.75f</span>,<span style="color: #6600EE; font-weight: bold">0</span>);          <span style="color: #888888">//</span>
+    Vector3 headPos2 = <span style="color: #008800; font-weight: bold">new</span> Vector3(<span style="color: #6600EE; font-weight: bold">0</span>, <span style="color: #6600EE; font-weight: bold">0.3f</span>, <span style="color: #6600EE; font-weight: bold">0</span>);         <span style="color: #888888">//</span>
+    Vector3 colliderPos1 = <span style="color: #008800; font-weight: bold">new</span> Vector3(<span style="color: #6600EE; font-weight: bold">0</span>, <span style="color: #6600EE; font-weight: bold">1.004f</span>, <span style="color: #6600EE; font-weight: bold">0</span>);   <span style="color: #888888">//</span>
+    Vector3 colliderPos2 = <span style="color: #008800; font-weight: bold">new</span> Vector3(<span style="color: #6600EE; font-weight: bold">0</span>, <span style="color: #6600EE; font-weight: bold">0.013f</span>, <span style="color: #6600EE; font-weight: bold">0</span>);   <span style="color: #888888">//</span>
+    <span style="color: #333399; font-weight: bold">float</span> colliderScale1 = <span style="color: #6600EE; font-weight: bold">3f</span>;                          <span style="color: #888888">//scale for the collider when changing modes</span>
+    <span style="color: #333399; font-weight: bold">float</span> colliderScale2 = <span style="color: #6600EE; font-weight: bold">1.05f</span>;                       <span style="color: #888888">//</span>
+
+    <span style="color: #008800; font-weight: bold">public</span> GameObject Head;
+    <span style="color: #008800; font-weight: bold">public</span> GameObject Body;
+    <span style="color: #008800; font-weight: bold">public</span> GameObject Jet;
+    <span style="color: #008800; font-weight: bold">public</span> GameObject Eye;
+    <span style="color: #008800; font-weight: bold">public</span> GameObject Arm;
+
+    <span style="color: #008800; font-weight: bold">public</span> GameObject controlOrbPrefab;     <span style="color: #888888">//prefabs for main ability</span>
+    <span style="color: #008800; font-weight: bold">public</span> GameObject moveOrbPrefab;        <span style="color: #888888">//</span>
+    <span style="color: #008800; font-weight: bold">public</span> ControlOrb currentControl;       <span style="color: #888888">//instances of main ability</span>
+    <span style="color: #008800; font-weight: bold">public</span> MoveOrb currentMove;             <span style="color: #888888">//</span>
+
+    <span style="color: #008800; font-weight: bold">public</span> GameObject Collider;             <span style="color: #888888">//object with collider component</span>
+    <span style="color: #008800; font-weight: bold">public</span> Transform footPosition;
+    <span style="color: #008800; font-weight: bold">public</span> Vector2 InputMovement = <span style="color: #008800; font-weight: bold">new</span> Vector2();       <span style="color: #888888">//vector to store input</span>
+
+    <span style="color: #008800; font-weight: bold">public</span> LayerMask notSelf;               <span style="color: #888888">//layer mask for everything other than this layer</span>
+    <span style="color: #008800; font-weight: bold">public</span> Rigidbody2D rb;
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #333399; font-weight: bold">bool</span> isgrounded = <span style="color: #008800; font-weight: bold">false</span>;
+    <span style="color: #333399; font-weight: bold">bool</span> isjumping = <span style="color: #008800; font-weight: bold">false</span>;
+    <span style="color: #333399; font-weight: bold">float</span> jumpStateTimer = <span style="color: #6600EE; font-weight: bold">0f</span>;
+    <span style="color: #333399; font-weight: bold">float</span> defaultDrag;
+    <span style="color: #333399; font-weight: bold">bool</span> noinput = <span style="color: #008800; font-weight: bold">false</span>;                   <span style="color: #888888">//bool to override input</span>
+
+    <span style="color: #008800; font-weight: bold">public</span> Room activeRoom;                 <span style="color: #888888">//current room</span>
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #333399; font-weight: bold">float</span> doorCooldown = <span style="color: #6600EE; font-weight: bold">0f</span>;
+
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">Start</span>() {
+        rb = GetComponent&lt;Rigidbody2D&gt;();
+        defaultDrag = rb.drag;
+        
+        rm = GameObject.Find(<span style="background-color: #fff0f0">&quot;RoomManager&quot;</span>).GetComponent&lt;RoomManager&gt;();
+        UpdateCurrentRoom();
+    }
+
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">Update</span>() {
+        <span style="color: #008800; font-weight: bold">if</span> (noinput) <span style="color: #008800; font-weight: bold">return</span>;
+
+        <span style="color: #008800; font-weight: bold">if</span> (doorCooldown &gt; <span style="color: #6600EE; font-weight: bold">0f</span>) {<span style="color: #888888">//reset cooldown on using doors over time</span>
+            doorCooldown -= Time.deltaTime;
+        }
+
+        <span style="color: #888888">//get input vector</span>
+        InputMovement.x = Input.GetAxisRaw(<span style="background-color: #fff0f0">&quot;Horizontal&quot;</span>);
+        <span style="color: #008800; font-weight: bold">if</span> (Input.GetAxis(<span style="background-color: #fff0f0">&quot;Vertical&quot;</span>) &gt; <span style="color: #6600EE; font-weight: bold">0</span> || Input.GetAxis(<span style="background-color: #fff0f0">&quot;Jump&quot;</span>) &gt; <span style="color: #6600EE; font-weight: bold">0</span>) {
+            InputMovement.y = <span style="color: #6600EE; font-weight: bold">1</span>;
+        } <span style="color: #008800; font-weight: bold">else</span> {
+            InputMovement.y = <span style="color: #6600EE; font-weight: bold">0</span>;
+        }
+
+        <span style="color: #888888">//try to change size</span>
+        <span style="color: #008800; font-weight: bold">if</span> (Input.GetKeyDown(KeyCode.S) &amp;&amp; isChangeEnabled) {
+            <span style="color: #008800; font-weight: bold">if</span> (!isLargeMode) {<span style="color: #888888">//go to large mode</span>
+                <span style="color: #008800; font-weight: bold">if</span> (!(Physics2D.Raycast(footPosition.position, footPosition.up, <span style="color: #6600EE; font-weight: bold">3f</span>, notSelf))) {<span style="color: #888888">//check height limit</span>
+                    StopAllCoroutines();
+                    headStartPos = Head.transform.localPosition;
+                    StartCoroutine(ChangeMode());
+                }
+            } <span style="color: #008800; font-weight: bold">else</span> {<span style="color: #888888">//go to small mode</span>
+                StopAllCoroutines();
+                headStartPos = Head.transform.localPosition;
+                StartCoroutine(ChangeMode());
+            }
+        }
+
+        <span style="color: #888888">//grabbing</span>
+        <span style="color: #008800; font-weight: bold">if</span> (Input.GetKeyDown(KeyCode.E) &amp;&amp; isLargeMode) {
+            TryGrab();
+        }
+        <span style="color: #008800; font-weight: bold">if</span> (Input.GetKeyUp(KeyCode.E)) {
+            UnGrab();
+        }
+
+        <span style="color: #888888">//main ability</span>
+        <span style="color: #008800; font-weight: bold">if</span> (Input.GetButtonDown(<span style="background-color: #fff0f0">&quot;Fire1&quot;</span>) &amp;&amp; isGunEnabled) {
+            <span style="color: #008800; font-weight: bold">if</span> (currentControl) {
+                Destroy(currentControl.gameObject);
+            } <span style="color: #008800; font-weight: bold">else</span> {
+                FireControlOrb();
+            }
+        }
+        <span style="color: #008800; font-weight: bold">if</span> (Input.GetButtonDown(<span style="background-color: #fff0f0">&quot;Fire2&quot;</span>) &amp;&amp; isGunEnabled) {
+            <span style="color: #008800; font-weight: bold">if</span> (currentMove) {
+                Destroy(currentMove.gameObject);
+            } <span style="color: #008800; font-weight: bold">else</span> {
+                FireMoveOrb();
+            }
+
+        }
+
+        <span style="color: #888888">//reset button</span>
+        <span style="color: #008800; font-weight: bold">if</span> (Input.GetKeyDown(KeyCode.R)) {
+            <span style="color: #008800; font-weight: bold">if</span>(activeRoom) activeRoom.ResetRoom(<span style="color: #008800; font-weight: bold">this</span>);
+            doorCooldown = <span style="color: #6600EE; font-weight: bold">3f</span>;
+        }
+
+    }
+
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">FixedUpdate</span>() {
+        <span style="color: #888888">//reset jump delay after time</span>
+        <span style="color: #008800; font-weight: bold">if</span> (jumpStateTimer &gt; <span style="color: #6600EE; font-weight: bold">0</span>) jumpStateTimer -= Time.fixedDeltaTime;
+
+        <span style="color: #888888">//check if player is grounded</span>
+        <span style="color: #008800; font-weight: bold">if</span> (Physics2D.Raycast(footPosition.position, -footPosition.up, <span style="color: #6600EE; font-weight: bold">0.3f</span>, notSelf)) {
+            isgrounded = <span style="color: #008800; font-weight: bold">true</span>;
+            <span style="color: #008800; font-weight: bold">if</span> (jumpStateTimer &lt;= <span style="color: #6600EE; font-weight: bold">0</span>) {
+                isjumping = <span style="color: #008800; font-weight: bold">false</span>;
+            }
+        } <span style="color: #008800; font-weight: bold">else</span> {
+            isgrounded = <span style="color: #008800; font-weight: bold">false</span>;
+        }
+
+        <span style="color: #888888">//simple jumping</span>
+        <span style="color: #008800; font-weight: bold">if</span> (InputMovement.y &gt; <span style="color: #6600EE; font-weight: bold">0</span> &amp;&amp; !isjumping) {
+            rb.AddForce(transform.up * jumpAmount,ForceMode2D.Impulse);
+            isjumping = <span style="color: #008800; font-weight: bold">true</span>;
+            jumpStateTimer = <span style="color: #6600EE; font-weight: bold">0.2f</span>;
+        }
+
+        <span style="color: #888888">//simple movement</span>
+        rb.AddForce(<span style="color: #008800; font-weight: bold">new</span> Vector2(InputMovement.x * (moveSpeed * Time.fixedDeltaTime),<span style="color: #6600EE; font-weight: bold">0</span>),ForceMode2D.Impulse);
+
+    }
+
+    <span style="color: #888888">//coroutine changes between large mode and small mode</span>
+    IEnumerator <span style="color: #0066BB; font-weight: bold">ChangeMode</span>() {
+        <span style="color: #008800; font-weight: bold">if</span> (isLargeMode) {
+            UnGrab();
+            Arm.SetActive(<span style="color: #008800; font-weight: bold">false</span>);
+            Body.SetActive(<span style="color: #008800; font-weight: bold">false</span>);
+        }
+
+        <span style="color: #888888">//Lerp from one size to the other, every 0.05 seconds</span>
+        <span style="color: #008800; font-weight: bold">for</span> (<span style="color: #333399; font-weight: bold">float</span> i = <span style="color: #6600EE; font-weight: bold">0</span>; i &lt; <span style="color: #6600EE; font-weight: bold">1</span>; i += <span style="color: #6600EE; font-weight: bold">0.1f</span>) {
+            <span style="color: #008800; font-weight: bold">if</span> (isLargeMode) {
+                Head.transform.localPosition = (Vector3.Lerp(headStartPos, headPos2, i));
+            } <span style="color: #008800; font-weight: bold">else</span> {
+                Head.transform.localPosition = (Vector3.Lerp(headStartPos, headPos1, i));
+            }
+            <span style="color: #008800; font-weight: bold">yield</span> <span style="color: #008800; font-weight: bold">return</span> <span style="color: #008800; font-weight: bold">new</span> <span style="color: #0066BB; font-weight: bold">WaitForSeconds</span>(<span style="color: #6600EE; font-weight: bold">0.05f</span>);
+        }
+
+        <span style="color: #888888">//after changing size, set collider to correct size</span>
+        <span style="color: #008800; font-weight: bold">if</span> (isLargeMode) {
+            Collider.transform.localScale = <span style="color: #008800; font-weight: bold">new</span> Vector3(Collider.transform.localScale.x, colliderScale2, Collider.transform.localScale.z);
+            Collider.transform.localPosition = colliderPos2;
+        } <span style="color: #008800; font-weight: bold">else</span> {
+            Collider.transform.localPosition = colliderPos1;
+            Collider.transform.localScale = <span style="color: #008800; font-weight: bold">new</span> Vector3(Collider.transform.localScale.x, colliderScale1, Collider.transform.localScale.z);
+            Body.SetActive(<span style="color: #008800; font-weight: bold">true</span>);
+        }
+        isLargeMode = !isLargeMode;
+        <span style="color: #008800; font-weight: bold">yield</span> <span style="color: #008800; font-weight: bold">return</span> <span style="color: #008800; font-weight: bold">null</span>;
+    }
+
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">TryGrab</span>() {
+        <span style="color: #333399; font-weight: bold">float</span> dir;
+        <span style="color: #333399; font-weight: bold">bool</span> hit = <span style="color: #008800; font-weight: bold">false</span>;
+        Interactable ie;
+
+        <span style="color: #008800; font-weight: bold">if</span> (Camera.main.ScreenToWorldPoint(Input.mousePosition).x - transform.position.x &gt; <span style="color: #6600EE; font-weight: bold">0</span>) {
+            dir = <span style="color: #6600EE; font-weight: bold">1</span>;
+        } <span style="color: #008800; font-weight: bold">else</span> {
+            dir = -<span style="color: #6600EE; font-weight: bold">1</span>;
+        }
+
+        <span style="color: #888888">//try grab in front, then behind</span>
+        <span style="color: #008800; font-weight: bold">if</span>(tryHit(dir,-<span style="color: #6600EE; font-weight: bold">0.25f</span>,<span style="color: #6600EE; font-weight: bold">1.5f</span>,<span style="color: #008800; font-weight: bold">out</span> ie)) {
+            Grab(ie);
+            hit = <span style="color: #008800; font-weight: bold">true</span>;
+        } <span style="color: #008800; font-weight: bold">else</span> <span style="color: #008800; font-weight: bold">if</span> (tryHit(dir, -<span style="color: #6600EE; font-weight: bold">1f</span>, <span style="color: #6600EE; font-weight: bold">2.5f</span>, <span style="color: #008800; font-weight: bold">out</span> ie)) {
+            Grab(ie);
+            hit = <span style="color: #008800; font-weight: bold">true</span>;
+        } <span style="color: #008800; font-weight: bold">else</span> <span style="color: #008800; font-weight: bold">if</span> (tryHit(-dir, -<span style="color: #6600EE; font-weight: bold">0.25f</span>, <span style="color: #6600EE; font-weight: bold">1.5f</span>, <span style="color: #008800; font-weight: bold">out</span> ie)) {
+            Grab(ie);
+            hit = <span style="color: #008800; font-weight: bold">true</span>;
+        } <span style="color: #008800; font-weight: bold">else</span> <span style="color: #008800; font-weight: bold">if</span> (tryHit(-dir, -<span style="color: #6600EE; font-weight: bold">1f</span>, <span style="color: #6600EE; font-weight: bold">2.5f</span>, <span style="color: #008800; font-weight: bold">out</span> ie)) {
+            Grab(ie);
+            hit = <span style="color: #008800; font-weight: bold">true</span>;
+        }
+    }
+
+    <span style="color: #888888">//function to clean up grabbing attempts</span>
+    <span style="color: #333399; font-weight: bold">bool</span> <span style="color: #0066BB; font-weight: bold">tryHit</span>(<span style="color: #333399; font-weight: bold">float</span> x, <span style="color: #333399; font-weight: bold">float</span> y, <span style="color: #333399; font-weight: bold">float</span> length, <span style="color: #008800; font-weight: bold">out</span> Interactable hit) {
+        RaycastHit2D _hit = Physics2D.Raycast(Head.transform.position, <span style="color: #008800; font-weight: bold">new</span> Vector2(x, y).normalized, length, notSelf);
+        <span style="color: #008800; font-weight: bold">if</span> (_hit &amp;&amp; _hit.transform.GetComponent&lt;Interactable&gt;() &amp;&amp; _hit.transform.GetComponent&lt;Interactable&gt;().canGrab) {
+            hit = _hit.transform.GetComponent&lt;Interactable&gt;();
+            <span style="color: #008800; font-weight: bold">return</span> <span style="color: #008800; font-weight: bold">true</span>;
+        } <span style="color: #008800; font-weight: bold">else</span> {
+            hit = <span style="color: #008800; font-weight: bold">null</span>;
+            <span style="color: #008800; font-weight: bold">return</span> <span style="color: #008800; font-weight: bold">false</span>;
+        }
+    }
+
+    <span style="color: #888888">//called if trygrab is successful</span>
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">Grab</span>(Interactable ie) {
+        <span style="color: #008800; font-weight: bold">if</span> (ie.Grab(<span style="color: #008800; font-weight: bold">this</span>)) {
+            grabbedObject = ie;
+        }
+    }
+
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">UnGrab</span>() {
+        <span style="color: #008800; font-weight: bold">if</span> (grabbedObject) {
+            grabbedObject.UnGrab();
+            grabbedObject = <span style="color: #008800; font-weight: bold">null</span>;
+        }
+    }
+
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">FireControlOrb</span>() {
+        <span style="color: #888888">//destroys existing control orb</span>
+        <span style="color: #008800; font-weight: bold">if</span> (currentControl != <span style="color: #008800; font-weight: bold">null</span>) {
+            Destroy(currentControl.gameObject);
+        }
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        currentControl = Instantiate(controlOrbPrefab,Eye.transform.position,Quaternion.identity).GetComponent&lt;ControlOrb&gt;();<span style="color: #888888">//creates new orb</span>
+        currentControl.gameObject.transform.up =  <span style="color: #008800; font-weight: bold">new</span> Vector3(mousePos.x, mousePos.y, <span style="color: #6600EE; font-weight: bold">0</span>) - currentControl.gameObject.transform.position;<span style="color: #888888">//rotates orb towards mouse position</span>
+        currentControl.rb.AddForce(currentControl.gameObject.transform.up * <span style="color: #6600EE; font-weight: bold">0.2f</span>,ForceMode2D.Impulse);
+        <span style="color: #008800; font-weight: bold">if</span>(currentControl !=<span style="color: #008800; font-weight: bold">null</span> &amp;&amp; currentMove != <span style="color: #008800; font-weight: bold">null</span>) {
+            currentControl.MoveObject = currentMove;<span style="color: #888888">//pairs with existing move orb</span>
+        }
+    }
+
+    <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">FireMoveOrb</span>() {
+        <span style="color: #888888">//destroys existing move orb</span>
+        <span style="color: #008800; font-weight: bold">if</span> (currentMove != <span style="color: #008800; font-weight: bold">null</span>) {
+            Destroy(currentMove.gameObject);
+        }
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        currentMove = Instantiate(moveOrbPrefab, Eye.transform.position, Quaternion.identity).GetComponent&lt;MoveOrb&gt;();<span style="color: #888888">//craetes new orb</span>
+        currentMove.gameObject.transform.up = <span style="color: #008800; font-weight: bold">new</span> Vector3(mousePos.x, mousePos.y, <span style="color: #6600EE; font-weight: bold">0</span>) - currentMove.gameObject.transform.position;<span style="color: #888888">//rotates orb towards mouse position</span>
+        currentMove.rb.AddForce(currentMove.gameObject.transform.up * <span style="color: #6600EE; font-weight: bold">0.2f</span>, ForceMode2D.Impulse);
+        <span style="color: #008800; font-weight: bold">if</span> (currentControl != <span style="color: #008800; font-weight: bold">null</span> &amp;&amp; currentMove != <span style="color: #008800; font-weight: bold">null</span>) {
+            currentControl.MoveObject = currentMove;<span style="color: #888888">//pairs with existing control orb</span>
+        }
+    }
+
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">UpdateCurrentRoom</span>() {
+        activeRoom = <span style="color: #008800; font-weight: bold">null</span>;
+        <span style="color: #008800; font-weight: bold">foreach</span>(Room room <span style="color: #008800; font-weight: bold">in</span> rm.roomList) {<span style="color: #888888">//iterates through room list, finding which room the player is within the bounds of</span>
+            <span style="color: #008800; font-weight: bold">if</span>(transform.position.x &gt; room.minBounds.x &amp;&amp; transform.position.y &gt; room.minBounds.y &amp;&amp; transform.position.x &lt; room.maxBounds.x &amp;&amp; transform.position.y &lt; room.maxBounds.y) {
+                activeRoom = room;
+                room.isActiveRoom = <span style="color: #008800; font-weight: bold">true</span>;
+                room.playerDefaultPosition = transform.position;
+            }<span style="color: #008800; font-weight: bold">else</span> {
+                room.isActiveRoom = <span style="color: #008800; font-weight: bold">false</span>;
+            }
+        }
+    }
+
+    <span style="color: #888888">//disables the key elements of the player (orbs, rigidbody, input)</span>
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">TempDisable</span>() {
+        UnGrab();
+        <span style="color: #008800; font-weight: bold">if</span>(currentControl)Destroy(currentControl.gameObject);
+        <span style="color: #008800; font-weight: bold">if</span>(currentMove)Destroy(currentMove.gameObject);
+
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        noinput = <span style="color: #008800; font-weight: bold">true</span>;
+        rb.velocity = Vector2.zero;
+    }
+
+    <span style="color: #888888">//re enables the key elements</span>
+    <span style="color: #008800; font-weight: bold">public</span> <span style="color: #008800; font-weight: bold">void</span> <span style="color: #0066BB; font-weight: bold">ReEnable</span>() {
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        noinput = <span style="color: #008800; font-weight: bold">false</span>;
+    }
+}
+</pre></div>
