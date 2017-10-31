@@ -39,6 +39,10 @@ body {
   border: 0;
 }
 
+.doublecard {
+  width: 66.666%;
+}
+
 .card > img {
   margin-bottom: .75rem;
 }
