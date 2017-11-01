@@ -255,7 +255,7 @@
         }
         Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-        currentMove = Instantiate(moveOrbPrefab, Eye.transform.position, Quaternion.identity).GetComponent&lt;MoveOrb&gt;();<span style="color: #888888">//craetes new orb</span>
+        currentMove = Instantiate(moveOrbPrefab, Eye.transform.position, Quaternion.identity).GetComponent&lt;MoveOrb&gt;();<span style="color: #888888">//creates new orb</span>
         currentMove.gameObject.transform.up = <span style="color: #008800; font-weight: bold">new</span> Vector3(mousePos.x, mousePos.y, <span style="color: #6600EE; font-weight: bold">0</span>) - currentMove.gameObject.transform.position;<span style="color: #888888">//rotates orb towards mouse position</span>
         currentMove.rb.AddForce(currentMove.gameObject.transform.up * <span style="color: #6600EE; font-weight: bold">0.2f</span>, ForceMode2D.Impulse);
         <span style="color: #008800; font-weight: bold">if</span> (currentControl != <span style="color: #008800; font-weight: bold">null</span> &amp;&amp; currentMove != <span style="color: #008800; font-weight: bold">null</span>) {
